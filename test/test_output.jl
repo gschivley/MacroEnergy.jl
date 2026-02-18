@@ -30,6 +30,7 @@ import MacroEnergy:
     get_optimal_vars_timeseries,
     get_optimal_capacity_by_field,
     get_optimal_flow,
+    get_optimal_curtailment,
     convert_to_dataframe, 
     empty_system, 
     create_output_path,
@@ -43,7 +44,8 @@ import MacroEnergy:
     Storage,
     Transformation,
     Edge,
-    filter_edges_by_commodity!
+    filter_edges_by_commodity!,
+    segments_non_served_demand
 
 
 function test_writing_output()
@@ -536,6 +538,104 @@ function test_writing_output()
         @test result_fast isa DataFrame
         @test size(result_fast, 1) == 18
         @test result_fast[1, :value] == 1.0  # No scaling applied
+    end
+
+    @testset "Curtailment Output Functions Tests" begin
+        # Create nodes with non-served demand for testing
+        node_with_nsd1 = Node{Electricity}(;
+            id=:node_nsd1,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[100.0, 200.0],
+            non_served_demand=[1.0 2.0 3.0; 4.0 5.0 6.0]  # 2 segments x 3 timesteps
+        )
+        
+        node_with_nsd2 = Node{Electricity}(;
+            id=:node_nsd2,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[150.0],
+            non_served_demand=[7.0 8.0 9.0]  # 1 segment x 3 timesteps
+        )
+        
+        node_asset_map = Dict{Symbol,Base.RefValue{Node}}(
+            :node_nsd1 => Ref(node_with_nsd1),
+            :node_nsd2 => Ref(node_with_nsd2)
+        )
+        
+        # Test get_optimal_curtailment with multiple nodes
+        result = get_optimal_curtailment([node_with_nsd1, node_with_nsd2], 1.0, node_asset_map)
+        @test result isa DataFrame
+        @test size(result, 1) == 9  # (2 segments + 1 segment) × 3 timesteps = 9 rows
+        
+        # Check first row (node_nsd1, segment 1, time 1)
+        @test result[1, :commodity] == :Electricity
+        @test result[1, :zone] == :node_nsd1
+        @test result[1, :resource_id] == :node_nsd1
+        @test result[1, :component_id] == :node_nsd1
+        @test result[1, :resource_type] == "Node{Electricity}"
+        @test result[1, :component_type] == "Node{Electricity}"
+        @test result[1, :variable] == :curtailment
+        @test result[1, :segment] == 1
+        @test result[1, :year] === missing
+        @test result[1, :time] == 1
+        @test result[1, :value] == 1.0
+        
+        # Check second row (node_nsd1, segment 1, time 2)
+        @test result[2, :segment] == 1
+        @test result[2, :time] == 2
+        @test result[2, :value] == 2.0
+        
+        # Check third row (node_nsd1, segment 1, time 3)
+        @test result[3, :segment] == 1
+        @test result[3, :time] == 3
+        @test result[3, :value] == 3.0
+        
+        # Check fourth row (node_nsd1, segment 2, time 1)
+        @test result[4, :segment] == 2
+        @test result[4, :time] == 1
+        @test result[4, :value] == 4.0
+        
+        # Check last row (node_nsd2, segment 1, time 3)
+        @test result[9, :resource_id] == :node_nsd2
+        @test result[9, :segment] == 1
+        @test result[9, :time] == 3
+        @test result[9, :value] == 9.0
+        
+        # Test with scaling
+        result_scaled = get_optimal_curtailment([node_with_nsd1], 2.0, node_asset_map)
+        @test result_scaled[1, :value] == 2.0  # 1.0 * 2.0
+        @test result_scaled[4, :value] == 8.0  # 4.0 * 2.0
+        
+        # Test single node
+        result_single = get_optimal_curtailment(node_with_nsd2, 1.0, node_asset_map)
+        @test size(result_single, 1) == 3  # 1 segment × 3 timesteps
+        @test result_single[1, :value] == 7.0
+        
+        # Test node without non-served demand
+        node_no_nsd = Node{Electricity}(;
+            id=:node_no_nsd,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[0.0]
+        )
+        result_empty = get_optimal_curtailment(node_no_nsd, 1.0, node_asset_map)
+        @test isempty(result_empty)
     end
 
     @testset "Timeseries Functions Tests" begin
