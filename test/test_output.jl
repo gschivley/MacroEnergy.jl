@@ -30,6 +30,7 @@ import MacroEnergy:
     get_optimal_vars_timeseries,
     get_optimal_capacity_by_field,
     get_optimal_flow,
+    get_optimal_curtailment,
     convert_to_dataframe, 
     empty_system, 
     create_output_path,
@@ -765,6 +766,102 @@ function test_writing_output()
                 @test get_output_layout(invalid_system, :any_variable) == "long"
             end
         end
+    end
+    
+    @testset "Curtailment Output Functions Tests" begin
+        # Create edges with availability and capacity for testing curtailment
+        node1 = Node{Electricity}(;
+            id=:node1,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[0.0, 1.0, 2.0]
+        )
+        node2 = Node{Electricity}(;
+            id=:node2,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[3.0, 4.0, 5.0]
+        )
+        
+        # Edge with capacity and availability < 1.0 (should have curtailment)
+        edge_with_curtailment = Edge{Electricity}(;
+            id=:edge_curtail,
+            start_vertex=node1,
+            end_vertex=node2,
+            has_capacity=true,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            availability=[0.8, 0.6, 0.9],  # Less than 1.0
+            capacity=100.0,
+            flow=[50.0, 30.0, 80.0]  # Less than available
+        )
+        
+        # Edge without capacity (should not appear in curtailment)
+        edge_no_capacity = Edge{Electricity}(;
+            id=:edge_no_cap,
+            start_vertex=node1,
+            end_vertex=node2,
+            has_capacity=false,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            flow=[10.0, 20.0, 30.0]
+        )
+        
+        # Test get_optimal_curtailment with single edge
+        result = MacroEnergy.get_optimal_curtailment(edge_with_curtailment, 1.0)
+        @test result isa DataFrame
+        @test size(result, 1) == 3  # 3 time steps
+        
+        # Check curtailment calculations
+        # Curtailment = max(0, availability * capacity - flow)
+        # t=1: max(0, 0.8 * 100 - 50) = 30
+        # t=2: max(0, 0.6 * 100 - 30) = 30
+        # t=3: max(0, 0.9 * 100 - 80) = 10
+        @test result[1, :value] ≈ 30.0
+        @test result[2, :value] ≈ 30.0
+        @test result[3, :value] ≈ 10.0
+        
+        @test result[1, :variable] == :curtailment
+        @test result[1, :component_id] == :edge_curtail
+        @test result[1, :time] == 1
+        
+        # Test that edge without capacity returns empty DataFrame
+        result_no_cap = MacroEnergy.get_optimal_curtailment(edge_no_capacity, 1.0)
+        @test result_no_cap isa DataFrame
+        @test size(result_no_cap, 1) == 0  # Should be empty
+        
+        # Test with scaling
+        result_scaled = MacroEnergy.get_optimal_curtailment(edge_with_curtailment, 0.5)
+        @test result_scaled[1, :value] ≈ 15.0  # 30.0 * 0.5
+        @test result_scaled[2, :value] ≈ 15.0  # 30.0 * 0.5
+        @test result_scaled[3, :value] ≈ 5.0   # 10.0 * 0.5
+        
+        # Test with vector of edges
+        edges_vec = [edge_with_curtailment]
+        result_vec = MacroEnergy.get_optimal_curtailment(edges_vec, 1.0)
+        @test result_vec isa DataFrame
+        @test size(result_vec, 1) == 3
+        @test result_vec[1, :value] ≈ 30.0
     end
 end
 
