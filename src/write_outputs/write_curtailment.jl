@@ -133,7 +133,7 @@ Two types of pattern matching are supported:
    - `"CO2*"` matches `CO2`, `CO2Captured`, etc.
 
 # Arguments
-- `system::System`: The system containing the all edges to output   
+- `system::System`: The system containing all the edges to output   
 - `scaling::Float64`: The scaling factor for the results.
 - `commodity::Union{AbstractString,Vector{<:AbstractString},Nothing}`: The commodity to filter by
 - `asset_type::Union{AbstractString,Vector{<:AbstractString},Nothing}`: The asset type to filter by
@@ -163,9 +163,9 @@ function get_optimal_curtailment(
 
     # filter edges by commodity
     if !isnothing(commodity)
-        (commodity, missed_commodites) = search_commodities(commodity, string.(collect(Set(MacroEnergy.commodity_type.(edges)))))
-        if !isempty(missed_commodites)
-            @warn "Commodities not found: $(missed_commodites) when printing curtailment results"
+        (commodity, missed_commodities) = search_commodities(commodity, string.(collect(Set(MacroEnergy.commodity_type.(edges)))))
+        if !isempty(missed_commodities)
+            @warn "Commodities not found: $(missed_commodities) when printing curtailment results"
         end
         filter_edges_by_commodity!(edges, commodity, edge_asset_map)
     end
