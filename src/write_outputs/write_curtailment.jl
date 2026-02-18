@@ -110,7 +110,8 @@ function get_optimal_curtailment(system::System; scaling::Float64=1.0)
         return DataFrame()
     end
     
-    curtailment_df[!, (!isa).(eachcol(curtailment_df), Vector{Missing})] # remove missing columns
+    # Remove columns that contain only Missing values to clean up the output
+    curtailment_df[!, (!isa).(eachcol(curtailment_df), Vector{Missing})]
 end
 
 ## Timeseries curtailment extraction functions ##
@@ -153,7 +154,8 @@ function get_optimal_curtailment(
     end
     
     time_axis = time_interval(node)
-    num_segments = length(segments_non_served_demand(node))
+    segments = segments_non_served_demand(node)
+    num_segments = length(segments)
     total_rows = num_segments * length(time_axis)
     
     return DataFrame(
@@ -166,8 +168,8 @@ function get_optimal_curtailment(
         component_type = fill(get_type(node), total_rows),
         variable = :non_served_demand,
         year = fill(missing, total_rows),
-        segment = [s for s in segments_non_served_demand(node) for t in time_axis],
-        time = [t for s in segments_non_served_demand(node) for t in time_axis],
-        value = [value(non_served_demand(node, s, t)) * scaling for s in segments_non_served_demand(node) for t in time_axis]
+        segment = [s for s in segments for t in time_axis],
+        time = [t for s in segments for t in time_axis],
+        value = [value(non_served_demand(node, s, t)) * scaling for s in segments for t in time_axis]
     )
 end
