@@ -245,6 +245,9 @@ function get_optimal_curtailment(
         return DataFrame()
     end
     
+    # Helper function to calculate curtailment value
+    curtailment_value(t) = max(0.0, availability(obj, t) * value(capacity(obj)) - value(flow(obj, t))) * scaling
+    
     if isempty(obj_asset_map)
         return DataFrame(
             case_name = fill(missing, length(time_axis)),
@@ -257,7 +260,7 @@ function get_optimal_curtailment(
             variable = :curtailment,
             year = fill(missing, length(time_axis)),
             time = [t for t in time_axis],
-            value = [max(0.0, availability(obj, t) * value(capacity(obj)) - value(flow(obj, t))) * scaling for t in time_axis]
+            value = [curtailment_value(t) for t in time_axis]
         )
     else
         return DataFrame(
@@ -265,14 +268,14 @@ function get_optimal_curtailment(
             commodity = fill(get_commodity_name(obj), length(time_axis)),
             node_in = fill(get_node_in(obj), length(time_axis)),
             node_out = fill(get_node_out(obj), length(time_axis)),
-            resource_id = fill(isa(obj, Node) ? get_resource_id(obj) : get_resource_id(obj, obj_asset_map), length(time_axis)),
+            resource_id = fill(get_resource_id(obj, obj_asset_map), length(time_axis)),
             component_id = fill(get_component_id(obj), length(time_axis)),
-            resource_type = fill(isa(obj, Node) ? get_type(obj) : get_type(obj_asset_map[id(obj)]), length(time_axis)),
+            resource_type = fill(get_type(obj_asset_map[id(obj)]), length(time_axis)),
             component_type = fill(get_type(obj), length(time_axis)),
             variable = :curtailment,
             year = fill(missing, length(time_axis)),
             time = [t for t in time_axis],
-            value = [max(0.0, availability(obj, t) * value(capacity(obj)) - value(flow(obj, t))) * scaling for t in time_axis]
+            value = [curtailment_value(t) for t in time_axis]
         )
     end
 end
