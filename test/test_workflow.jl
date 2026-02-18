@@ -43,6 +43,7 @@ import MacroEnergy:
     write_costs,
     write_undiscounted_costs,
     write_flow,
+    write_curtailment,
     typesymbol
 
 
@@ -301,10 +302,13 @@ function test_writing_outputs(case,model)
     @test_nowarn write_costs("test_costs.csv", system, model)
     @test_nowarn write_undiscounted_costs("test_undiscountedcosts.csv", system, model)
     @test_nowarn write_flow("test_flow.csv", system)
+    @test_nowarn write_curtailment("test_curtailment.csv", system)
+    @test_nowarn get_optimal_curtailment(system)
     rm("test_capacity.csv")     # clean up
     rm("test_costs.csv")        # clean up
     rm("test_undiscountedcosts.csv")        # clean up
     rm("test_flow.csv")         # clean up
+    rm("test_curtailment.csv")  # clean up
     return nothing
 end 
 
