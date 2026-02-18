@@ -66,6 +66,42 @@ function collect_local_flows(bd_results::BendersResults)
 end
 
 """
+Collect curtailment results from all subproblems, handling distributed case.
+"""
+function collect_curtailment_results(case::Case, bd_results::BendersResults)
+    if case.settings.BendersSettings[:Distributed]
+        return collect_distributed_curtailments(bd_results)
+    else
+        return collect_local_curtailments(bd_results)
+    end
+end
+
+"""
+Collect curtailment results from subproblems on distributed workers.
+"""
+function collect_distributed_curtailments(bd_results::BendersResults)
+    p_id = workers()
+    np_id = length(p_id)
+    curtailment_df = Vector{Vector{DataFrame}}(undef, np_id)
+    @sync for i in 1:np_id
+        @async curtailment_df[i] = @fetchfrom p_id[i] get_local_expressions(get_optimal_curtailment, DistributedArrays.localpart(bd_results.op_subproblem))
+    end
+    return reduce(vcat, curtailment_df)
+end
+
+"""
+Collect curtailment results from local subproblems.
+"""
+function collect_local_curtailments(bd_results::BendersResults)
+    curtailment_df = Vector{DataFrame}(undef, length(bd_results.op_subproblem))
+    for i in eachindex(bd_results.op_subproblem)
+        system = bd_results.op_subproblem[i][:system_local]
+        curtailment_df[i] = get_optimal_curtailment(system)
+    end
+    return curtailment_df
+end
+
+"""
 Convert DenseAxisArray to Dict, preserving axis information.
 """
 function densearray_to_dict(arr::JuMP.Containers.DenseAxisArray)

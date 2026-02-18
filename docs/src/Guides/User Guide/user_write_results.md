@@ -5,6 +5,7 @@ Currently, Macro supports the following types of outputs:
 - [Capacity Results](@ref): final capacity, new capacity and retired capacity for each technology.
 - [Costs](@ref): fixed, variable and total system costs.
 - [Flow Results](@ref): flow for each commodity through each edge in the system.
+- [Curtailment Results](@ref): non-served demand (curtailment) by node, segment, and time period.
 
 For detailed information about output formats and layouts, please refer to the [Output Format](@ref) and [Output Files Layout](@ref) sections below.
 
@@ -85,6 +86,39 @@ write_flow("flows.csv", system, asset_type="ThermalPower*")
 !!! note "Output Layout"
     Results are written in *long* format by default. To use *wide* format, configure the `OutputLayout: {"Flow": "wide"}` setting in your Macro settings JSON file (see [Output Files Layout](@ref) for details).
 
+## Curtailment Results
+
+Export curtailment (non-served demand) results using the [`write_curtailment`](@ref) function:
+
+```julia
+write_curtailment("curtailment.csv", system)
+```
+
+This function exports curtailment values for nodes that have non-served demand variables defined (i.e., nodes with `max_nsd` greater than zero). If no nodes have curtailment enabled, the output file will not be created.
+
+The curtailment results include:
+- **Commodity**: The commodity type (e.g., Electricity, Hydrogen)
+- **Zone**: The geographical zone or location
+- **Segment**: The curtailment segment (for piecewise linear approximations)
+- **Time**: The time period
+- **Value**: The amount of curtailment (in the commodity's units)
+
+!!! info "Non-Served Demand"
+    Non-served demand represents the amount of demand that cannot be met by the system. It is typically used to model demand response or load shedding, with penalty costs assigned through the `price_nsd` parameter in the node definition.
+
+The `write_curtailment` function supports the same scaling parameter as other output functions:
+
+```julia
+# Apply scaling factor to curtailment values
+write_curtailment("curtailment.csv", system, scaling=1.0)
+```
+
+!!! note "Output Layout"
+    Results are written in *long* format by default. To use *wide* format, configure the `OutputLayout: {"Curtailment": "wide"}` setting in your Macro settings JSON file (see [Output Files Layout](@ref) for details).
+
+!!! note "Automatic Writing"
+    The `write_curtailment` function is automatically called when using the main output writing functions (`write_outputs`) for all solution algorithms (Monolithic, Myopic, Benders). The curtailment output file (`curtailment.csv`) will be created alongside other output files like `flows.csv` and `capacity.csv`.
+
 ## Writing Case Settings
 
 To export case and system settings to a JSON file, use the [`write_settings`](@ref) function:
@@ -149,7 +183,8 @@ or
   "OutputLayout": {
     "Capacity": "wide",
     "Costs": "long",
-    "Flow": "long"
+    "Flow": "long",
+    "Curtailment": "long"
   }
 }
 ```
@@ -157,7 +192,7 @@ or
 Available options:
 - `"OutputLayout": "long"` (applies to all outputs)
 - `"OutputLayout": "wide"` (applies to all outputs)
-- `"OutputLayout": {"Capacity": "wide", "Costs": "long", "Flow": "long"}` (individual layout settings)
+- `"OutputLayout": {"Capacity": "wide", "Costs": "long", "Flow": "long", "Curtailment": "long"}` (individual layout settings)
 
 ## Output Files Location
 
