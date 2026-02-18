@@ -30,6 +30,7 @@ import MacroEnergy:
     get_optimal_vars_timeseries,
     get_optimal_capacity_by_field,
     get_optimal_flow,
+    get_optimal_curtailment,
     convert_to_dataframe, 
     empty_system, 
     create_output_path,
@@ -765,6 +766,57 @@ function test_writing_output()
                 @test get_output_layout(invalid_system, :any_variable) == "long"
             end
         end
+    end
+    
+    # Test curtailment output functionality
+    @testset "Curtailment Output Tests" begin
+        # Create nodes with non-served demand variables
+        node_with_nsd = Node{Electricity}(;
+            id=:node_nsd,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[0.5, 1.0],
+            non_served_demand=[1.0 2.0 3.0; 4.0 5.0 6.0]  # 2 segments × 3 timesteps
+        )
+        
+        node_without_nsd = Node{Electricity}(;
+            id=:node_no_nsd,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            max_nsd=[0.0]  # No non-served demand
+        )
+        
+        # Test get_optimal_curtailment for a single node with NSD
+        curtailment_df = get_optimal_curtailment(node_with_nsd, 1.0)
+        @test nrow(curtailment_df) == 6  # 2 segments × 3 timesteps
+        @test "segment" in names(curtailment_df)
+        @test "time" in names(curtailment_df)
+        @test "value" in names(curtailment_df)
+        @test curtailment_df.variable == fill(:non_served_demand, 6)
+        @test curtailment_df.value == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+        
+        # Test get_optimal_curtailment for a single node without NSD
+        curtailment_df_empty = get_optimal_curtailment(node_without_nsd, 1.0)
+        @test isempty(curtailment_df_empty)
+        
+        # Test get_optimal_curtailment with a list of nodes
+        nodes = [node_with_nsd, node_without_nsd]
+        curtailment_df_list = get_optimal_curtailment(nodes, 1.0)
+        @test nrow(curtailment_df_list) == 6  # Only the node with NSD contributes
+        
+        # Test scaling
+        curtailment_df_scaled = get_optimal_curtailment(node_with_nsd, 2.0)
+        @test curtailment_df_scaled.value == [2.0, 4.0, 6.0, 8.0, 10.0, 12.0]
     end
 end
 
