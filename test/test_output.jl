@@ -781,7 +781,7 @@ function test_writing_output()
                 subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
             ),
             max_nsd=[0.5, 1.0],
-            non_served_demand=[1.0 2.0 3.0; 4.0 5.0 6.0]  # 2 segments × 3 timesteps
+            non_served_demand=[1.0 2.0 3.0; 4.0 5.0 6.0]  # Matrix: rows=segments (2), columns=timesteps (3)
         )
         
         node_without_nsd = Node{Electricity}(;

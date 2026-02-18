@@ -89,7 +89,7 @@ end
 Get the optimal curtailment (non-served demand) values for all nodes in a system.
 
 # Arguments
-- `system::System`: The system containing the all nodes to output   
+- `system::System`: The system containing all the nodes to output   
 - `scaling::Float64`: The scaling factor for the results.
 
 # Returns
