@@ -35,6 +35,12 @@ function generate_system!(system::System, system_data::AbstractDict{Symbol,Any})
 
     # Load the assets
     load!(system, system_data[:assets])
+
+    # Load global constraints (optional)
+    if haskey(system_data, :global_constraints)
+        load_global_constraints!(system, system_data[:global_constraints])
+    end
+
     @info("Done generating system. It took $(round(time() - start_time, digits=2)) seconds")
     return nothing
 end
@@ -48,5 +54,34 @@ function generate_system!(
     @info("Generating system from $file_path")
     system_data = load_system_data(file_path, system.data_dirpath; lazy_load = lazy_load)
     generate_system!(periods, system_data)
+    return nothing
+end
+
+"""
+    load_global_constraints!(system::System, data::AbstractDict{Symbol,Any})
+
+Load system-level (global) constraints from a dictionary and add them to the system.
+Each key in the dictionary is the name of a constraint type and each value is either
+`true` (for constraints with no parameters) or a dictionary of keyword arguments.
+
+# Arguments
+- `system`: The `System` to add constraints to
+- `data`: A dictionary mapping constraint type names to their configuration
+"""
+function load_global_constraints!(system::System, data::AbstractDict{Symbol,Any})
+    constraint_library = constraint_types()
+    for (name, config) in data
+        name_sym = Symbol(name)
+        if !haskey(constraint_library, name_sym)
+            throw(ArgumentError("Unknown global constraint type: $name"))
+        end
+        ct_type = constraint_library[name_sym]
+        if isa(config, Bool) && config == true
+            push!(system.global_constraints, ct_type())
+        elseif isa(config, AbstractDict)
+            kwargs = Dict{Symbol,Any}(Symbol(k) => v for (k, v) in config)
+            push!(system.global_constraints, ct_type(; kwargs...))
+        end
+    end
     return nothing
 end

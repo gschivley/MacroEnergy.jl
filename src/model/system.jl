@@ -6,6 +6,7 @@ mutable struct System <: AbstractSystem
     assets::Vector{AbstractAsset}
     locations::Vector{Union{Node, Location}}
     input_data::Vector{Dict{Symbol,Any}}
+    global_constraints::Vector{AbstractTypeConstraint}
 end
 
 """
@@ -105,7 +106,8 @@ function empty_system(data_dirpath::String)
         Dict{Symbol,TimeData}(),
         [],
         [],
-        []
+        [],
+        AbstractTypeConstraint[]
     )
 end
 

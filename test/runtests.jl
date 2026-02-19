@@ -25,5 +25,9 @@ with_logger(test_logger) do
     Test.@testset verbose = true "Myopic Functionality" begin
         include("test_myopic.jl")
     end
+
+    Test.@testset verbose = true "MaxCapitalCostConstraint" begin
+        include("test_max_capital_cost.jl")
+    end
     return nothing
 end
