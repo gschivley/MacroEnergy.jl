@@ -92,6 +92,7 @@ This will use Macro to solve the example system and save the results in the `res
 - `costs.csv`: fixed, variable, and total system costs (for multiple periods, present value at the beginning of the modeling horizon).
 - `undiscounted_costs.csv`: fixed, variable, and total system costs (for multiple periods, present value at the point in time when the costs were incurred).
 - `flow.csv`: flow results for each commodity through each edge.
+- `curtailment.csv`: curtailment results for variable renewable energy (VRE) assets showing unused generation potential.
 - `balance_duals.csv`: demand balance constraint duals (marginal prices) for each node.
 - `co2_cap_duals.csv`: CO2 cap constraint duals (carbon prices) for each node (only if CO2 cap constraints are enabled).
 

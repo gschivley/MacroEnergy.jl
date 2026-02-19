@@ -5,6 +5,7 @@ Currently, Macro supports the following types of outputs:
 - [Capacity Results](@ref): final capacity, new capacity and retired capacity for each technology.
 - [Costs](@ref): fixed, variable and total system costs.
 - [Flow Results](@ref): flow for each commodity through each edge in the system.
+- [Curtailment Results](@ref): curtailment of variable renewable energy (VRE) generation.
 
 For detailed information about output formats and layouts, please refer to the [Output Format](@ref) and [Output Files Layout](@ref) sections below.
 
@@ -84,6 +85,50 @@ write_flow("flows.csv", system, asset_type="ThermalPower*")
 
 !!! note "Output Layout"
     Results are written in *long* format by default. To use *wide* format, configure the `OutputLayout: {"Flow": "wide"}` setting in your Macro settings JSON file (see [Output Files Layout](@ref) for details).
+
+## Curtailment Results
+
+Export curtailment results for variable renewable energy (VRE) assets using the [`write_curtailment`](@ref) function:
+
+```julia
+write_curtailment("curtailment.csv", system)
+```
+
+Curtailment represents the difference between available VRE generation and actual generation. It is calculated as:
+
+```
+curtailment[t] = availability[t] × capacity - flow[t]
+```
+
+Only VRE assets with availability data (such as wind and solar) are included in the curtailment output. Hydro spillage is kept separate and is not included.
+
+Filter results by commodity, asset type, or both using the `commodity` and `asset_type` parameters:
+
+```julia
+# Filter by commodity
+write_curtailment("curtailment.csv", system, commodity="Electricity")
+
+# Filter by asset type using parameter-free matching
+write_curtailment("curtailment.csv", system, asset_type="Wind")
+
+# Filter by asset type using wildcard matching
+write_curtailment("curtailment.csv", system, asset_type="Wind*")
+
+# Filter by both commodity and asset type
+write_curtailment("curtailment.csv", system, commodity="Electricity", asset_type=["Wind", "Solar*"])
+```
+
+!!! note "Output Layout"
+    Results are written in *long* format by default. To use *wide* format, configure the `OutputLayout: {"Curtailment": "wide"}` setting in your Macro settings JSON file (see [Output Files Layout](@ref) for details).
+
+!!! tip "Understanding Curtailment"
+    Curtailment indicates when renewable energy generation is reduced below its available potential, typically due to:
+    - Oversupply relative to demand
+    - Transmission constraints
+    - Minimum generation requirements from other units
+    - Lack of energy storage capacity
+    
+    High curtailment may suggest opportunities for adding storage, transmission, or flexible demand.
 
 ## Writing Case Settings
 
