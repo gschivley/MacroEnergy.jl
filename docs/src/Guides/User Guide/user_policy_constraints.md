@@ -1,16 +1,18 @@
 # Adding Policy Constraints to a System
 
-Currently, Macro supports two types of policy constraints:
+Currently, Macro supports the following types of policy constraints:
 
 - **CO₂ cap constraint**
 - **CO₂ storage annual constraint**
+- **Maximum capital cost constraint**
 
-The units of both constraints are determined by the stoichiometric balances used in assets with CO₂ emissions or injection to a CO₂ capture node.
+The units of the CO₂ constraints are determined by the stoichiometric balances used in assets with CO₂ emissions or injection to a CO₂ capture node.
 
 The following sections describe the steps to add these constraints to a system:
 
 - [Adding a CO₂ cap constraint](@ref)
 - [Adding a CO₂ storage annual constraint](@ref)
+- [Adding a maximum capital cost constraint](@ref)
 
 !!! note "Nodes file"
     To add a policy constraint to a node, the user needs to edit the nodes file in the system (typically located at `system/nodes.json`). For more information about the nodes file, please refer to the [Adding a Node to a System](@ref) page.
@@ -161,3 +163,57 @@ Consequently, the `nodes.json` file should have a `CO2Captured` node with the fo
 ```
 
 Macro will automatically track all CO₂ injection from assets linked to the `co2_storage` node and constrain the total injection to the value set in the `rhs_policy` key.
+
+## Adding a maximum capital cost constraint
+
+The maximum capital cost constraint limits the total capital expenditure for new capacity investments across all expandable assets in a given planning period. This is useful for scenarios where you want to minimize CO₂ emissions (or another objective) subject to a fixed capital budget.
+
+!!! note "Formulation"
+    ```math
+    \begin{aligned}
+        \sum_{y \in \mathcal{Y}} \text{investment\_cost}(y) \times \text{new\_capacity}(y) \leq \text{max\_capital\_cost}
+    \end{aligned}
+    ```
+    where ``\mathcal{Y}`` is the set of all expandable edges and storages in the system.
+
+To add this constraint to a system period, add a `"global_constraints"` key to the system's data entry in `system_data.json` (or the file it references):
+
+```json
+{
+    "global_constraints": {
+        "MaxCapitalCostConstraint": {
+            "max_capital_cost": 1000000
+        }
+    }
+}
+```
+
+!!! note "Units"
+    The `max_capital_cost` value should be in the same units as the product of `investment_cost` (cost per unit of capacity) and `new_capacity` (capacity units) used in the asset definitions.
+
+!!! note "Multi-period models"
+    In multi-period models, the constraint is applied independently to each period where it is specified. To apply different capital budgets in different periods, add `"global_constraints"` to each relevant period entry in the `"case"` array of `system_data.json`.
+
+    ```json
+    {
+        "case": [
+            {
+                "global_constraints": {
+                    "MaxCapitalCostConstraint": {
+                        "max_capital_cost": 500000
+                    }
+                },
+                // other period 1 data
+            },
+            {
+                "global_constraints": {
+                    "MaxCapitalCostConstraint": {
+                        "max_capital_cost": 1000000
+                    }
+                },
+                // other period 2 data
+            }
+        ],
+        "settings": { ... }
+    }
+    ```

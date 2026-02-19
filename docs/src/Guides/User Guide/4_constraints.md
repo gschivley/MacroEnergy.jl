@@ -116,3 +116,8 @@ MacroEnergy.add_model_constraint!(ct::StorageMinDurationConstraint, g::AbstractS
 ```@docs
 MacroEnergy.add_retrofit_constraints!(system::MacroEnergy.System, period_idx::Int, model::Model)
 ```
+
+## [Maximum capital cost constraint](@id max_capital_cost_constraint_ref)
+```@docs
+MacroEnergy.add_model_constraint!(ct::MaxCapitalCostConstraint, system::MacroEnergy.System, model::Model)
+```
