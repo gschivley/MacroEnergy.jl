@@ -5,6 +5,7 @@ Currently, Macro supports the following types of outputs:
 - [Capacity Results](@ref): final capacity, new capacity and retired capacity for each technology.
 - [Costs](@ref): fixed, variable and total system costs.
 - [Flow Results](@ref): flow for each commodity through each edge in the system.
+- [VRE Curtailment Results](@ref): curtailment (difference between potential and actual generation) for VRE assets.
 
 For detailed information about output formats and layouts, please refer to the [Output Format](@ref) and [Output Files Layout](@ref) sections below.
 
@@ -85,6 +86,25 @@ write_flow("flows.csv", system, asset_type="ThermalPower*")
 !!! note "Output Layout"
     Results are written in *long* format by default. To use *wide* format, configure the `OutputLayout: {"Flow": "wide"}` setting in your Macro settings JSON file (see [Output Files Layout](@ref) for details).
 
+## VRE Curtailment Results
+
+Export VRE curtailment results using the [`write_curtailment`](@ref) function:
+
+```julia
+write_curtailment("curtailment.csv", system)
+```
+
+Curtailment is the difference between potential generation (availability × capacity) and actual generation (flow) for each VRE asset at each timestep. VRE resources may be dispatched at less than their potential generation due to grid constraints.
+
+The curtailment value for a VRE edge `e` at time `t` is:
+
+```math
+\text{curtailment}(e, t) = \max(0, \text{availability}(e, t) \times \text{capacity}(e) - \text{flow}(e, t))
+```
+
+!!! note "Output Layout"
+    Results are written in *long* format by default. To use *wide* format, configure the `OutputLayout: {"Curtailment": "wide"}` setting in your Macro settings JSON file (see [Output Files Layout](@ref) for details).
+
 ## Writing Case Settings
 
 To export case and system settings to a JSON file, use the [`write_settings`](@ref) function:
@@ -149,7 +169,8 @@ or
   "OutputLayout": {
     "Capacity": "wide",
     "Costs": "long",
-    "Flow": "long"
+    "Flow": "long",
+    "Curtailment": "long"
   }
 }
 ```
@@ -157,7 +178,7 @@ or
 Available options:
 - `"OutputLayout": "long"` (applies to all outputs)
 - `"OutputLayout": "wide"` (applies to all outputs)
-- `"OutputLayout": {"Capacity": "wide", "Costs": "long", "Flow": "long"}` (individual layout settings)
+- `"OutputLayout": {"Capacity": "wide", "Costs": "long", "Flow": "long", "Curtailment": "long"}` (individual layout settings)
 
 ## Output Files Location
 
