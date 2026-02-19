@@ -62,6 +62,24 @@ MacroEnergy.write_costs
 MacroEnergy.write_curtailment
 ```
 
+## `collect_curtailment_results`
+
+```@docs
+MacroEnergy.collect_curtailment_results
+```
+
+## `collect_distributed_curtailments`
+
+```@docs
+MacroEnergy.collect_distributed_curtailments
+```
+
+## `collect_local_curtailments`
+
+```@docs
+MacroEnergy.collect_local_curtailments
+```
+
 ## `write_duals`
 ```@docs
 MacroEnergy.write_duals
