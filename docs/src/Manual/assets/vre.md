@@ -399,6 +399,7 @@ Note that the `global_data` field is used to set the fields and constraints that
 5. **Use constraints selectively**: Only enable constraints that are necessary for your modeling needs
 6. **Validate costs**: Ensure investment and O&M costs are in appropriate units
 7. **Test configurations**: Start with simple configurations and gradually add complexity.
+8. **Analyze curtailment**: Use the [`write_curtailment`](@ref) function to export curtailment results and understand when and why VRE generation is being reduced. High curtailment may indicate opportunities for adding storage, transmission capacity, or flexible demand. See the [Curtailment Results](@ref) section in the User Guide for more details.
 
 ## [Input File (Advanced Format)](@id vre_advanced_json_csv_input_format)
 

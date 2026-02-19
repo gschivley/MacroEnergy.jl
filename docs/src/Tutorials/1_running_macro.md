@@ -108,6 +108,7 @@ mkpath(result_dir)
 write_capacity(joinpath(result_dir, "capacity.csv"), system)
 write_costs(joinpath(result_dir, "costs.csv"), system, model)
 write_flow(joinpath(result_dir, "flow.csv"), system)
+write_curtailment(joinpath(result_dir, "curtailment.csv"), system)
 ```
 
 ### Viewing Results
@@ -121,6 +122,7 @@ get_optimal_capacity(system)
 get_optimal_new_capacity(system)
 get_optimal_retired_capacity(system)
 get_optimal_flow(system)
+get_optimal_curtailment(system)
 get_optimal_discounted_costs(solution)
 ```
 

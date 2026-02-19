@@ -311,6 +311,30 @@ elc_plot = stack_elec_gen |>
 
 During the day, when solar photovoltaic is available, almost all of the electricity generation comes from VREs.
 
+### Analyzing VRE Curtailment
+
+Let's examine VRE curtailment to understand when renewable generation is reduced below its available potential:
+
+```julia
+curtailment_results = get_optimal_curtailment(system)
+curtailment_wide = MacroEnergy.reshape_wide(curtailment_results, :time, :component_id, :value)
+
+# Get curtailment for solar and wind
+solar_curtailment = curtailment_wide[plot_time_interval, :NE_utilitypv_class1_moderate_70_0_2_6_edge] / 1e3;
+wind_curtailment = curtailment_wide[plot_time_interval, :NE_landbasedwind_class4_moderate_70_7_edge] / 1e3;
+
+# Calculate total available capacity
+solar_capacity = value(capacity(system.assets[3].edge)) * 1e-3 # Convert to GW
+wind_capacity = value(capacity(system.assets[4].edge)) * 1e-3
+
+println("Solar capacity: $(round(solar_capacity, digits=2)) GW")
+println("Wind capacity: $(round(wind_capacity, digits=2)) GW")
+println("Average solar curtailment: $(round(mean(solar_curtailment), digits=2)) GWh/timestep")
+println("Average wind curtailment: $(round(mean(wind_curtailment), digits=2)) GWh/timestep")
+```
+
+High VRE curtailment during certain hours indicates periods when renewable generation exceeds demand or when other system constraints limit renewable uptake. This is economically optimal when selling power below variable costs or when transmission/storage constraints exist.
+
 Because hydrogen storage is cheaper than batteries, we expect the system to use the electricity generated during the day to operate the electrolyzers to meet the hydrogen demand, storing the excess hydrogen to be used when solar photovoltaics can not generate electricity.
 
 We verify our assumption by making a stacked area plot of the hydrogen supply (hydrogen generation net of the hydrogen stored):
