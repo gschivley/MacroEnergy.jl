@@ -179,6 +179,21 @@ MacroEnergy.struct_info
 MacroEnergy.timestepbefore
 ```
 
+## `collect_curtailment_results`
+```@docs
+MacroEnergy.collect_curtailment_results
+```
+
+## `collect_local_curtailments`
+```@docs
+MacroEnergy.collect_local_curtailments
+```
+
+## `collect_distributed_curtailments`
+```@docs
+MacroEnergy.collect_distributed_curtailments
+```
+
 ## `collect_flow_results`
 ```@docs
 MacroEnergy.collect_flow_results
