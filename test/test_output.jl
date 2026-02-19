@@ -30,6 +30,7 @@ import MacroEnergy:
     get_optimal_vars_timeseries,
     get_optimal_capacity_by_field,
     get_optimal_flow,
+    get_optimal_curtailment,
     convert_to_dataframe, 
     empty_system, 
     create_output_path,
@@ -643,6 +644,84 @@ function test_writing_output()
         edges_with_capacity = edges_with_capacity_variables(system)
         @test length(edges_with_capacity) == 1
         @test edges_with_capacity[1] == edge_to_transformation
+    end
+
+    @testset "Curtailment Output Functions Tests" begin
+        # Build VRE assets for curtailment testing
+        vre_transform = Transformation(;
+            id=:vre_transform1,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=1,
+                subperiods=[1:1, 2:2, 3:3],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 1.0, 2 => 1.0, 3 => 1.0)
+            )
+        )
+        vre_node = Node{Electricity}(;
+            id=:vre_node1,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=1,
+                subperiods=[1:1, 2:2, 3:3],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 1.0, 2 => 1.0, 3 => 1.0)
+            ),
+            max_nsd=[0.0, 0.0, 0.0]
+        )
+        vre_edge = Edge{Electricity}(;
+            id=:vre_edge1,
+            start_vertex=vre_transform,
+            end_vertex=vre_node,
+            has_capacity=true,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=1,
+                subperiods=[1:1, 2:2, 3:3],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 1.0, 2 => 1.0, 3 => 1.0)
+            ),
+            availability=[0.8, 0.6, 1.0],
+            capacity=100.0,
+            flow=[80.0, 30.0, 100.0]
+        )
+        vre_asset = VRE(:vre_asset1, vre_transform, vre_edge)
+
+        vre_system = empty_system(@__DIR__)
+        add!(vre_system, vre_node)
+        add!(vre_system, vre_asset)
+
+        # Test get_optimal_curtailment returns correct values
+        curtailment_result = get_optimal_curtailment(vre_system)
+        @test curtailment_result isa DataFrame
+        @test nrow(curtailment_result) == 3  # 1 VRE edge × 3 time steps
+
+        # Expected curtailment = availability(t) * capacity - flow(t):
+        # t=1: 0.8 * 100.0 - 80.0 = 0.0
+        # t=2: 0.6 * 100.0 - 30.0 = 30.0
+        # t=3: 1.0 * 100.0 - 100.0 = 0.0
+        @test curtailment_result[1, :time] == 1
+        @test curtailment_result[1, :value] ≈ 0.0
+        @test curtailment_result[2, :time] == 2
+        @test curtailment_result[2, :value] ≈ 30.0
+        @test curtailment_result[3, :time] == 3
+        @test curtailment_result[3, :value] ≈ 0.0
+
+        # Test metadata columns
+        @test curtailment_result[1, :commodity] == :Electricity
+        @test curtailment_result[1, :resource_id] == :vre_asset1
+        @test curtailment_result[1, :component_id] == :vre_edge1
+        @test curtailment_result[1, :resource_type] == "VRE"
+        @test curtailment_result[1, :variable] == :curtailment
+
+        # Test with scaling
+        curtailment_scaled = get_optimal_curtailment(vre_system; scaling=2.0)
+        @test curtailment_scaled[2, :value] ≈ 60.0
+
+        # Test with no VRE assets returns empty DataFrame
+        empty_df = get_optimal_curtailment(system)  # system has no VRE assets
+        @test empty_df isa DataFrame
+        @test nrow(empty_df) == 0
     end
 
     @testset "get_output_dir Tests" begin

@@ -4,6 +4,11 @@
 Pages = ["4_writing_output.md"]
 ```
 
+## `get_optimal_curtailment`
+```@docs
+MacroEnergy.get_optimal_curtailment
+```
+
 ## `get_optimal_capacity`
 ```@docs
 MacroEnergy.get_optimal_capacity
@@ -49,6 +54,12 @@ MacroEnergy.write_co2_cap_duals
 
 ```@docs
 MacroEnergy.write_costs
+```
+
+## `write_curtailment`
+
+```@docs
+MacroEnergy.write_curtailment
 ```
 
 ## `write_duals`
