@@ -13,6 +13,12 @@ function add_constraints_by_type!(system::System, model::Model, constraint_type:
             add_constraints_by_type!(getfield(a, t), model, constraint_type)
         end
     end
+
+    for c in system.global_constraints
+        if isa(c, constraint_type)
+            add_model_constraint!(c, system, model)
+        end
+    end
 end
 
 function add_constraints_by_type!(

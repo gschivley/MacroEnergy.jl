@@ -63,3 +63,8 @@ MacroEnergy.load_benders_settings
 ```@docs
 MacroEnergy.try_load_benders_settings
 ```
+
+## `load_global_constraints!`
+```@docs
+MacroEnergy.load_global_constraints!
+```
