@@ -30,6 +30,7 @@ import MacroEnergy:
     get_optimal_vars_timeseries,
     get_optimal_capacity_by_field,
     get_optimal_flow,
+    get_optimal_curtailment,
     convert_to_dataframe, 
     empty_system, 
     create_output_path,
@@ -43,6 +44,7 @@ import MacroEnergy:
     Storage,
     Transformation,
     Edge,
+    VRE,
     filter_edges_by_commodity!
 
 
@@ -765,6 +767,84 @@ function test_writing_output()
                 @test get_output_layout(invalid_system, :any_variable) == "long"
             end
         end
+    end
+
+    @testset "Curtailment Output Functions Tests" begin
+        vre_transform = Transformation(;
+            id=:vre_transform,
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            )
+        )
+
+        vre_edge = Edge{Electricity}(;
+            id=:vre_edge,
+            start_vertex=vre_transform,
+            end_vertex=node1,
+            has_capacity=true,
+            availability=[0.8, 0.6, 0.4],
+            timedata=TimeData{Electricity}(;
+                time_interval=1:3,
+                hours_per_timestep=10,
+                subperiods=[1:10, 11:20, 21:30],
+                subperiod_indices=[1, 2, 3],
+                subperiod_weights=Dict(1 => 0.3, 2 => 0.5, 3 => 0.2)
+            ),
+            capacity=100.0,
+            flow=[60.0, 50.0, 40.0]
+        )
+
+        vre_asset = VRE(:vre_asset, vre_transform, vre_edge)
+        vre_asset_ref = Ref(vre_asset)
+        vre_edge_asset_map = Dict{Symbol, Base.RefValue{<: AbstractAsset}}(:vre_edge => vre_asset_ref)
+
+        # Test get_optimal_curtailment for a single edge with asset map
+        result = get_optimal_curtailment(vre_edge, 1.0, vre_edge_asset_map)
+        @test result isa DataFrame
+        @test size(result, 1) == 3
+        @test result[1, :commodity] == :Electricity
+        @test result[1, :node_in] == :vre_transform
+        @test result[1, :node_out] == :node1
+        @test result[1, :resource_id] == :vre_asset
+        @test result[1, :component_id] == :vre_edge
+        @test result[1, :resource_type] == "VRE"
+        @test result[1, :component_type] == "Edge{Electricity}"
+        @test result[1, :variable] == :curtailment
+        @test result[1, :year] === missing
+        @test result[1, :time] == 1
+        @test result[1, :value] ≈ 20.0  # 0.8 * 100 - 60 = 20
+        @test result[2, :value] ≈ 10.0  # 0.6 * 100 - 50 = 10
+        @test result[3, :value] ≈ 0.0   # 0.4 * 100 - 40 = 0
+
+        # Test with scaling
+        result_scaled = get_optimal_curtailment(vre_edge, 2.0, vre_edge_asset_map)
+        @test result_scaled[1, :value] ≈ 40.0  # 2.0 * 20.0
+
+        # Test without asset map
+        result_no_map = get_optimal_curtailment(vre_edge, 1.0)
+        @test result_no_map isa DataFrame
+        @test size(result_no_map, 1) == 3
+        @test result_no_map[1, :resource_id] == :vre_edge  # falls back to component_id
+        @test result_no_map[1, :value] ≈ 20.0
+
+        # Test get_optimal_curtailment at system level
+        vre_system = empty_system(@__DIR__)
+        add!(vre_system, vre_asset)
+        result_system = get_optimal_curtailment(vre_system)
+        @test result_system isa DataFrame
+        @test size(result_system, 1) == 3
+        @test result_system[1, :value] ≈ 20.0
+        @test result_system[2, :value] ≈ 10.0
+        @test result_system[3, :value] ≈ 0.0
+
+        # Test with no VRE assets (system with ThermalPower and Battery only)
+        result_empty = get_optimal_curtailment(system)
+        @test result_empty isa DataFrame
+        @test size(result_empty, 1) == 0
     end
 end
 

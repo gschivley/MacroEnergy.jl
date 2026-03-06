@@ -51,6 +51,9 @@ function write_outputs(case_path::AbstractString, case::Case, bd_results::Bender
 
     # get the flow results from the operational subproblems
     flow_df = collect_flow_results(case, bd_results)
+
+    # get the curtailment results from the operational subproblems
+    curtailment_df = collect_curtailment_results(case, bd_results)
     
     # get the policy slack variables from the operational subproblems
     slack_vars = collect_distributed_policy_slack_vars(bd_results)
@@ -80,6 +83,9 @@ function write_outputs(case_path::AbstractString, case::Case, bd_results::Bender
 
         # Flow results
         write_flows(joinpath(results_dir, "flows.csv"), period, flow_df[subop_indices_period])
+
+        # Curtailment results
+        write_curtailments(joinpath(results_dir, "curtailment.csv"), period, curtailment_df[subop_indices_period])
         
         # Cost results
         costs = prepare_costs_benders(period, bd_results, subop_indices_period, settings)
@@ -129,6 +135,9 @@ function write_outputs(results_dir::AbstractString,
 
     # Flow results
     write_flow(joinpath(results_dir, "flows.csv"), system)
+
+    # Curtailment results
+    write_curtailment(joinpath(results_dir, "curtailment.csv"), system)
 
     # Write dual values (if enabled)
     if system.settings.DualExportsEnabled
